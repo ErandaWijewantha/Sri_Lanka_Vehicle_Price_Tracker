@@ -42,7 +42,7 @@ def _database_url() -> str:
     return url
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner="Loading data…")
 def query(sql: str, params: tuple[Any, ...] = ()) -> pd.DataFrame:
     with psycopg.connect(_database_url(), prepare_threshold=None) as conn, conn.cursor() as cur:
         cur.execute(sql, params)
