@@ -1,0 +1,33 @@
+name: full sweep (manual)
+
+# One-shot walk of every page of one site. Normally not needed: sync.yml's
+# rolling backfill covers every page about once a day.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Site to sweep
+        type: choice
+        options: [riyasewana, ikman]
+
+permissions:
+  contents: read
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    concurrency:
+      group: scrape-${{ inputs.source }}
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SCRAPER_USER_AGENT: vehicle-price-tracker/0.1 (+${{ github.server_url }}/${{ github.repository }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m scraper.run --mode full --source ${{ inputs.source }}

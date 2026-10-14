@@ -1,0 +1,40 @@
+name: sync
+
+# Every 3 hours, per site: fresh scan first (new ads, price changes), then
+# continue the rolling backfill for up to BACKFILL_PAGES pages.
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      backfill_pages:
+        description: Backfill pages per site for this run
+        default: '250'
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [riyasewana, ikman]
+    # One scraper per site at a time (shared with full.yml).
+    concurrency:
+      group: scrape-${{ matrix.source }}
+      cancel-in-progress: false
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SCRAPER_USER_AGENT: vehicle-price-tracker/0.1 (+${{ github.server_url }}/${{ github.repository }})
+      BACKFILL_PAGES: ${{ inputs.backfill_pages || '250' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m scraper.run --mode sync --source ${{ matrix.source }} --backfill-pages "$BACKFILL_PAGES"
